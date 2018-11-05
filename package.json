@@ -9,6 +9,7 @@
     "build-webpack": "cross-env NODE_ENV=production webpack --progress --hide-modules",
     "build-rollup": "cross-env NODE_ENV=production rollup --config"
   },
+  "private": false,
   "main": "dist/lan-uploader.js",
   "module": "dist/lan-uploader.js",
   "unpkg": "dist/lan-uploader.js",
