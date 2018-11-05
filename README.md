@@ -17,8 +17,11 @@
   - [x] thumbnails
   - [x] Chunk upload
 
+原版本: v2.8.15
+本组件使用此版本号: v2.8.16 (只是修改了一些功能)
+
 # Pre
-> 此上传主键是使用 vue-upload-component 根据项目需要修改而来，依然采用Apache 2.0协议。 如有侵权请告知删除 lan6995@gmail.com
+> 此组件是使用 vue-upload-component 根据项目需要修改而来，依然采用Apache 2.0协议。 如有侵权请告知删除 lan6995@gmail.com
 
 1. 添加了总体进度 upload.progress (通过每个文件的progress计算而来)
 2. 修改了input-file与input-filter两个事件，添加一个参数`evt` 用以简单识别事件类型
