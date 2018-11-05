@@ -1,6 +1,6 @@
 /*!
  * Name: lan-uploader
- * Version: 2.8.16
+ * Version: 2.8.17
  * Author: northlan
  */
 (function (global, factory) {
@@ -809,6 +809,11 @@
         default: function _default() {
           return CHUNK_DEFAULT_OPTIONS;
         }
+      },
+
+      autoUpload: {
+        type: Boolean,
+        default: false
       }
     },
 
@@ -1371,10 +1376,22 @@
 
       // 处理后 事件 分发
       emitFile: function emitFile(newFile, oldFile, evt) {
+        // 计算总体进度
+        var newLength = needUploadFileIdArray.length;
         if (evt === 'add') {
-          this.progress = this.progress * needUploadFileIdArray.length / (needUploadFileIdArray.length + 1);
+          newLength++;
+        } else if (evt === 'remove') {
+          newLength--;
+        }
+        this.progress = this.progress * needUploadFileIdArray.length / newLength;
+        // 自动上传
+        if (Boolean(newFile) !== Boolean(oldFile) || oldFile.error !== newFile.error) {
+          if (!this.active && this.autoUpload) {
+            this.active = true;
+          }
         }
         this.$emit('input-file', newFile, oldFile, evt);
+
         if (newFile && newFile.fileObject && newFile.active && (!oldFile || !oldFile.active)) {
           this.uploading++;
           // 激活
@@ -2024,7 +2041,7 @@
   /* style */
   var __vue_inject_styles__$1 = function __vue_inject_styles__(inject) {
     if (!inject) return;
-    inject("data-v-e0754aa4_0", { source: "\n.file-uploads{overflow:hidden;position:relative;text-align:center;display:inline-block\n}\n.file-uploads.file-uploads-html4 input[type=file],.file-uploads.file-uploads-html5 label{background:#fff;opacity:0;font-size:20em;z-index:1;top:0;left:0;right:0;bottom:0;position:absolute;width:100%;height:100%\n}\n.file-uploads.file-uploads-html4 label,.file-uploads.file-uploads-html5 input[type=file]{background:rgba(255,255,255,0);overflow:hidden;position:fixed;width:1px;height:1px;z-index:-1;opacity:0\n}", map: undefined, media: undefined });
+    inject("data-v-26937bf3_0", { source: "\n.file-uploads{overflow:hidden;position:relative;text-align:center;display:inline-block\n}\n.file-uploads.file-uploads-html4 input[type=file],.file-uploads.file-uploads-html5 label{background:#fff;opacity:0;font-size:20em;z-index:1;top:0;left:0;right:0;bottom:0;position:absolute;width:100%;height:100%\n}\n.file-uploads.file-uploads-html4 label,.file-uploads.file-uploads-html5 input[type=file]{background:rgba(255,255,255,0);overflow:hidden;position:fixed;width:1px;height:1px;z-index:-1;opacity:0\n}", map: undefined, media: undefined });
   };
   /* scoped */
   var __vue_scope_id__$1 = undefined;
