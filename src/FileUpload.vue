@@ -171,6 +171,11 @@ export default {
       default: () => {
         return CHUNK_DEFAULT_OPTIONS
       }
+    },
+
+    autoUpload: {
+      type: Boolean,
+      default: false
     }
   },
 
@@ -741,10 +746,23 @@ export default {
 
     // 处理后 事件 分发
     emitFile(newFile, oldFile, evt) {
+      // 计算总体进度
+      let newLength = needUploadFileIdArray.length
       if (evt === 'add') {
-        this.progress = this.progress * needUploadFileIdArray.length / (needUploadFileIdArray.length + 1)
+        newLength++
+      } else if (evt === 'remove') {
+        newLength--
+      }
+      this.progress = this.progress * needUploadFileIdArray.length / newLength
+      // 自动上传
+      if (Boolean(newFile) !== Boolean(oldFile) || oldFile.error !== newFile.error) {
+        if (!this.active && this.autoUpload) {
+          this.active = true
+        }
       }
       this.$emit('input-file', newFile, oldFile, evt)
+
+
       if (newFile && newFile.fileObject && newFile.active && (!oldFile || !oldFile.active)) {
         this.uploading++
         // 激活
