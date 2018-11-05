@@ -383,7 +383,7 @@
 <script>
 import Cropper from 'cropperjs'
 import ImageCompressor from '@xkeshi/image-compressor'
-import FileUpload from 'vue-upload-component'
+import FileUpload from 'lan-uploader'
 export default {
   components: {
     FileUpload,

@@ -1,22 +1,22 @@
 {
-  "name": "vue-upload-component",
-  "description": "Vue.js file upload component, Multi-file upload, Upload directory, Drag upload, Drag the directory, Upload multiple files at the same time, html4 (IE 9), `PUT` method, Customize the filter",
+  "name": "lan-uploader",
+  "description": "Vue.js file upload component, Multi-file upload, Upload directory, Drag upload, Drag the directory, Upload multiple files at the same time, html4 (IE 9), `PUT` method, Customize the filter. fork from lianyue's vue-upload-component https://github.com/lian-yue/vue-upload-component",
   "version": "2.8.15",
-  "author": "LianYue",
+  "author": "northlan",
   "scripts": {
     "dev": "cross-env NODE_ENV=development webpack-dev-server",
     "build": "npm run build-webpack && npm run build-rollup",
     "build-webpack": "cross-env NODE_ENV=production webpack --progress --hide-modules",
     "build-rollup": "cross-env NODE_ENV=production rollup --config"
   },
-  "main": "dist/vue-upload-component.js",
-  "module": "dist/vue-upload-component.js",
-  "unpkg": "dist/vue-upload-component.js",
-  "jsdelivr": "dist/vue-upload-component.js",
+  "main": "dist/lan-uploader.js",
+  "module": "dist/lan-uploader.js",
+  "unpkg": "dist/lan-uploader.js",
+  "jsdelivr": "dist/lan-uploader.js",
   "typings": "index.d.ts",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/lian-yue/vue-upload-component.git"
+    "url": "git+https://github.com/crazy6995/LanUploader.git"
   },
   "keywords": [
     "javascript",
@@ -34,13 +34,13 @@
     "drag-directory",
     "upload-directory",
     "vue-component",
-    "vue-upload-component"
+    "lan-uploader"
   ],
   "license": "Apache-2.0",
   "bugs": {
-    "url": "https://github.com/lian-yue/vue-upload-component/issues"
+    "url": "https://github.com/crazy6995/LanUploader/issues"
   },
-  "homepage": "https://github.com/lian-yue/vue-upload-component#readme",
+  "homepage": "https://github.com/crazy6995/LanUploader#readme",
   "dependencies": {},
   "devDependencies": {
     "babel-core": "^6.26.3",

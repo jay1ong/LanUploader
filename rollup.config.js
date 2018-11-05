@@ -37,8 +37,8 @@ function baseConfig() {
 
 let config = baseConfig()
 config.input = 'src/index.js'
-config.output.file = 'dist/vue-upload-component.js'
-config.output.name = 'VueUploadComponent'
+config.output.file = 'dist/lan-uploader.js'
+config.output.name = 'LanUploader'
 config.plugins.push(
   vue({
     template: {
@@ -51,8 +51,8 @@ config.plugins.push(
 
 let configMin = baseConfig()
 configMin.input = 'src/index.js'
-configMin.output.file = 'dist/vue-upload-component.min.js'
-configMin.output.name = 'VueUploadComponent'
+configMin.output.file = 'dist/lan-uploader.min.js'
+configMin.output.name = 'LanUploader'
 configMin.plugins.push(
   vue({
     style: {
@@ -74,8 +74,8 @@ configMin.plugins.push(
 
 let configPart = baseConfig()
 configPart.input = 'src/index.js'
-configPart.output.file = 'dist/vue-upload-component.part.js'
-configPart.output.name = 'VueUploadComponent'
+configPart.output.file = 'dist/lan-uploader.part.js'
+configPart.output.name = 'LanUploader'
 configPart.plugins.push(
   pluginCSS(),
   vue({

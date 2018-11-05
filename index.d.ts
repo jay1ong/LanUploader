@@ -40,6 +40,7 @@ declare class _ extends Vue {
   readonly files: Array<VUFile>
   readonly features: { html5?: boolean; directory?: boolean; drag?: boolean }
   active: boolean
+  readonly progress: string
   readonly dropActive: true
   readonly uploaded: true
 }

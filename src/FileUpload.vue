@@ -12,7 +12,8 @@
   text-align: center;
   display: inline-block;
 }
-.file-uploads.file-uploads-html4 input[type="file"], .file-uploads.file-uploads-html5 label {
+.file-uploads.file-uploads-html4 input[type='file'],
+.file-uploads.file-uploads-html5 label {
   /* background fix ie  click */
   background: #fff;
   opacity: 0;
@@ -26,7 +27,8 @@
   width: 100%;
   height: 100%;
 }
-.file-uploads.file-uploads-html5 input[type="file"], .file-uploads.file-uploads-html4 label {
+.file-uploads.file-uploads-html5 input[type='file'],
+.file-uploads.file-uploads-html4 label {
   /* background fix ie  click */
   background: rgba(255, 255, 255, 0);
   overflow: hidden;
@@ -38,7 +40,8 @@
 }
 </style>
 <script>
-import ChunkUploadDefaultHandler from './chunk/ChunkUploadHandler'
+// import ChunkUploadDefaultHandler from './chunk/ChunkUploadHandler'
+import LanChunkUploadHandler from './chunk/LanChunkUploadHandler'
 import InputFile from './InputFile.vue'
 
 const CHUNK_DEFAULT_OPTIONS = {
@@ -48,8 +51,16 @@ const CHUNK_DEFAULT_OPTIONS = {
   maxActive: 3,
   maxRetries: 5,
 
-  handler: ChunkUploadDefaultHandler
+  handler: LanChunkUploadHandler
 }
+
+const EVENT_ENUM = {
+  ADD: 'add',
+  UPDATE: 'update',
+  REMOVE: 'remove',
+}
+
+let needUploadFileIdArray = []
 
 export default {
   components: {
@@ -178,6 +189,8 @@ export default {
       uploading: 0,
 
       destroy: false,
+
+      progress: 0.00, // 总体上传进度
     }
   },
 
@@ -260,7 +273,7 @@ export default {
       return true
     },
 
-    chunkOptions () {
+    chunkOptions() {
       return Object.assign(CHUNK_DEFAULT_OPTIONS, this.chunk)
     },
 
@@ -277,6 +290,17 @@ export default {
 
   watch: {
     active(active) {
+      // 触发上传,记录本次需上传文件ID列表
+      if (active) {
+        needUploadFileIdArray = []
+        let file
+        for (let i = 0, len = this.files.length; i < len; ++i) {
+          file = this.files[i]
+          if (file.fileObject && !file.success && !file.error) {
+            needUploadFileIdArray.push(file.id)
+          }
+        }
+      }
       this.watchActive(active)
     },
 
@@ -290,6 +314,9 @@ export default {
       this.watchDrop(value)
     },
 
+    /**
+     * 外部修改 :value v-model
+     */
     value(files) {
       if (this.files === files) {
         return
@@ -310,21 +337,24 @@ export default {
         let newFile = this.maps[key]
         let oldFile = oldMaps[key]
         if (newFile !== oldFile) {
-          this.emitFile(newFile, oldFile)
+          if (newFile && oldFile) {
+            this.emitFile(newFile, oldFile, EVENT_ENUM.UPDATE)
+          } else if (newFile && !oldFile) {
+            this.emitFile(newFile, oldFile, EVENT_ENUM.ADD)
+          }
         }
       }
 
       // delete
       for (let key in oldMaps) {
         if (!this.maps[key]) {
-          this.emitFile(undefined, oldMaps[key])
+          this.emitFile(undefined, oldMaps[key], EVENT_ENUM.REMOVE)
         }
       }
     },
   },
 
   methods: {
-
     // 清空
     clear() {
       if (this.files.length) {
@@ -337,7 +367,7 @@ export default {
         // 事件
         this.emitInput()
         for (let i = 0; i < files.length; i++) {
-          this.emitFile(undefined, files[i])
+          this.emitFile(undefined, files[i], EVENT_ENUM.REMOVE)
         }
       }
       return true
@@ -403,6 +433,7 @@ export default {
             ...file,
             response: {},
 
+            uploader: this,
             progress: '0.00',          // 只读
             speed: 0,                  // 只读
             // xhr: false,                // 只读
@@ -425,7 +456,7 @@ export default {
           file.id = Math.random().toString(36).substr(2)
         }
 
-        if (this.emitFilter(file, undefined)) {
+        if (this.emitFilter(file, undefined, EVENT_ENUM.ADD)) {
           continue
         }
 
@@ -475,7 +506,7 @@ export default {
       // 事件
       this.emitInput()
       for (let i = 0; i < addFiles.length; i++) {
-        this.emitFile(addFiles[i], undefined)
+        this.emitFile(addFiles[i], undefined, EVENT_ENUM.ADD)
       }
 
       return isArray ? addFiles : addFiles[0]
@@ -622,7 +653,7 @@ export default {
     remove(id) {
       let file = this.get(id)
       if (file) {
-        if (this.emitFilter(undefined, file)) {
+        if (this.emitFilter(undefined, file, EVENT_ENUM.REMOVE)) {
           return false
         }
         let files = this.files.concat([])
@@ -639,7 +670,7 @@ export default {
 
         // 事件
         this.emitInput()
-        this.emitFile(undefined, file)
+        this.emitFile(undefined, file, EVENT_ENUM.REMOVE)
       }
       return file
     },
@@ -657,7 +688,7 @@ export default {
           newFile.error = 'abort'
         }
 
-        if (this.emitFilter(newFile, file)) {
+        if (this.emitFilter(newFile, file, EVENT_ENUM.UPDATE)) {
           return false
         }
 
@@ -676,27 +707,44 @@ export default {
 
         // 事件
         this.emitInput()
-        this.emitFile(newFile, file)
+
+        // 进度
+        let allProgress = 0.00
+        let item
+        for (let i = 0, len = this.files.length; i < len; ++i) {
+          item = this.files[i]
+          if (item.fileObject && needUploadFileIdArray.indexOf(item.id) !== -1) {
+            allProgress += Number(item.progress)
+          }
+        }
+        this.progress = allProgress / needUploadFileIdArray.length
+
+        // 上传成功
+        if (newFile.success && !file.success && data.success) {
+          this.emitSuccess(newFile)
+        }
+        this.emitFile(newFile, file, EVENT_ENUM.UPDATE)
         return newFile
       }
       return false
     },
 
-
-
     // 预处理 事件 过滤器
-    emitFilter(newFile, oldFile) {
+    emitFilter(newFile, oldFile, evt) {
       let isPrevent = false
       this.$emit('input-filter', newFile, oldFile, function () {
         isPrevent = true
         return isPrevent
-      })
+      }, evt)
       return isPrevent
     },
 
     // 处理后 事件 分发
-    emitFile(newFile, oldFile) {
-      this.$emit('input-file', newFile, oldFile)
+    emitFile(newFile, oldFile, evt) {
+      if (evt === 'add') {
+        this.progress = this.progress * needUploadFileIdArray.length / (needUploadFileIdArray.length + 1)
+      }
+      this.$emit('input-file', newFile, oldFile, evt)
       if (newFile && newFile.fileObject && newFile.active && (!oldFile || !oldFile.active)) {
         this.uploading++
         // 激活
@@ -735,6 +783,28 @@ export default {
       this.$emit('input', this.files)
     },
 
+    emitSuccess(file) {
+      this.$emit('single-success', file)
+
+      let res = []
+
+      let item
+      let allSuccess = true
+      for (let i = 0, len = this.files.length; i < len; ++i) {
+        item = this.files[i]
+        if (item.fileObject && needUploadFileIdArray.indexOf(item.id) !== -1) {
+          if (!item.success || item.error) {
+            allSuccess = false
+          } else {
+            res.push(item)
+          }
+        }
+      }
+      // 数量成功限定
+      if (allSuccess && res.length === needUploadFileIdArray.length) {
+        this.$emit('all-success', res)
+      }
+    },
 
     // 上传
     upload(id) {
@@ -805,7 +875,7 @@ export default {
      *
      * @param Object file
      */
-    shouldUseChunkUpload (file) {
+    shouldUseChunkUpload(file) {
       return this.chunkEnabled &&
         !!this.chunkOptions.handler &&
         file.size > this.chunkOptions.minSize
@@ -816,7 +886,7 @@ export default {
      *
      * @param File file
      */
-    uploadChunk (file) {
+    uploadChunk(file) {
       const HandlerClass = this.chunkOptions.handler
       file.chunk = new HandlerClass(file, this.chunkOptions)
 

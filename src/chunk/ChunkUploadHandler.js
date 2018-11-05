@@ -239,7 +239,7 @@ export default class ChunkUploadHandler {
       }
 
       this.sessionId = res.data.session_id
-      this.chunkSize = res.data.end_offset
+      this.chunkSize = Number(res.data.end_offset)
 
       this.createChunks()
       this.startChunking()

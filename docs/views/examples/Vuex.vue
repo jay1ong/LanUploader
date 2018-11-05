@@ -51,7 +51,7 @@
 
 <script>
 import { mapState } from 'vuex'
-import FileUpload from 'vue-upload-component'
+import FileUpload from 'lan-uploader'
 export default {
   components: {
     FileUpload,

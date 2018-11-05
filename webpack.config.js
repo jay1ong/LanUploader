@@ -28,7 +28,7 @@ function baseConfig() {
       ],
 
       alias: {
-        'vue-upload-component': path.join(__dirname, 'src'),
+        'lan-uploader': path.join(__dirname, 'src'),
       },
 
       extensions: [
