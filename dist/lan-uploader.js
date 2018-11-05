@@ -1,6 +1,6 @@
 /*!
  * Name: lan-uploader
- * Version: 2.8.15
+ * Version: 2.8.16
  * Author: northlan
  */
 (function (global, factory) {
