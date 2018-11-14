@@ -1,6 +1,6 @@
 /*!
  * Name: lan-uploader
- * Version: 2.8.20
+ * Version: 2.8.21
  * Author: northlan
  */
 (function (global, factory) {
@@ -4499,9 +4499,6 @@
     REMOVE: 'remove'
   };
 
-  var needUploadFileIdSet = new Collections.HashSet();
-  var uploadSuccessFileMap = new Collections.HashMap();
-
   var script = {
     name: 'lan-uploader',
     props: {
@@ -4624,6 +4621,8 @@
           directory: false,
           drag: false
         },
+        needUploadFileIdSet: new Collections.HashSet(),
+        uploadSuccessFileMap: new Collections.HashMap(),
 
         active: false,
         dropActive: false,
@@ -5246,11 +5245,11 @@
         var item = void 0;
         for (var i = 0, len = this.files.length; i < len; ++i) {
           item = this.files[i];
-          if (item.fileObject && needUploadFileIdSet.has(item.id)) {
+          if (item.fileObject && this.needUploadFileIdSet.has(item.id)) {
             allProgress += Number(item.progress);
           }
         }
-        var allNumber = needUploadFileIdSet.cardinality();
+        var allNumber = this.needUploadFileIdSet.cardinality();
         this.progress = allNumber === 0 ? 0 : allProgress / allNumber;
       },
 
@@ -5269,9 +5268,9 @@
       // 处理后 事件 分发
       emitFile: function emitFile(newFile, oldFile, evt) {
         if (evt === EVENT_ENUM.ADD) {
-          needUploadFileIdSet.add(newFile.id);
+          this.needUploadFileIdSet.add(newFile.id);
         } else if (evt === EVENT_ENUM.REMOVE) {
-          needUploadFileIdSet.remove(oldFile.id);
+          this.needUploadFileIdSet.remove(oldFile.id);
         }
         // console.log('length', oldLength, newLength)
         this.refreshProgress();
@@ -5328,21 +5327,21 @@
         var allSuccess = true;
         for (var i = 0, len = this.files.length; i < len; ++i) {
           item = this.files[i];
-          if (item.fileObject && needUploadFileIdSet.has(item.id)) {
+          if (item.fileObject && this.needUploadFileIdSet.has(item.id)) {
             if (!item.success || item.error) {
               allSuccess = false;
             } else {
-              if (!uploadSuccessFileMap.contains(item.id)) {
-                uploadSuccessFileMap.put(item.id, item);
+              if (!this.uploadSuccessFileMap.contains(item.id)) {
+                this.uploadSuccessFileMap.put(item.id, item);
               }
             }
           }
         }
         // 全成功
         if (allSuccess) {
-          this.$emit('all-success', uploadSuccessFileMap.values());
-          uploadSuccessFileMap.clear();
-          needUploadFileIdSet = new Collections.HashSet();
+          this.$emit('all-success', this.uploadSuccessFileMap.values());
+          this.uploadSuccessFileMap.clear();
+          this.needUploadFileIdSet = new Collections.HashSet();
         }
       },
 

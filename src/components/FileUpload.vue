@@ -33,9 +33,6 @@ const EVENT_ENUM = {
   REMOVE: 'remove',
 }
 
-let needUploadFileIdSet = new Collections.HashSet()
-let uploadSuccessFileMap = new Collections.HashMap()
-
 export default {
   name: 'lan-uploader',
   props: {
@@ -158,6 +155,8 @@ export default {
         directory: false,
         drag: false,
       },
+      needUploadFileIdSet: new Collections.HashSet(),
+      uploadSuccessFileMap: new Collections.HashMap(),
 
       active: false,
       dropActive: false,
@@ -717,11 +716,11 @@ export default {
       let item
       for (let i = 0, len = this.files.length; i < len; ++i) {
         item = this.files[i]
-        if (item.fileObject && needUploadFileIdSet.has(item.id)) {
+        if (item.fileObject && this.needUploadFileIdSet.has(item.id)) {
           allProgress += Number(item.progress)
         }
       }
-      const allNumber = needUploadFileIdSet.cardinality()
+      const allNumber = this.needUploadFileIdSet.cardinality()
       this.progress = allNumber === 0 ? 0 : allProgress / allNumber
     },
 
@@ -738,9 +737,9 @@ export default {
     // 处理后 事件 分发
     emitFile(newFile, oldFile, evt) {
       if (evt === EVENT_ENUM.ADD) {
-        needUploadFileIdSet.add(newFile.id)
+        this.needUploadFileIdSet.add(newFile.id)
       } else if (evt === EVENT_ENUM.REMOVE) {
-        needUploadFileIdSet.remove(oldFile.id)
+        this.needUploadFileIdSet.remove(oldFile.id)
       }
       // console.log('length', oldLength, newLength)
       this.refreshProgress()
@@ -797,21 +796,21 @@ export default {
       let allSuccess = true
       for (let i = 0, len = this.files.length; i < len; ++i) {
         item = this.files[i]
-        if (item.fileObject && needUploadFileIdSet.has(item.id)) {
+        if (item.fileObject && this.needUploadFileIdSet.has(item.id)) {
           if (!item.success || item.error) {
             allSuccess = false
           } else {
-            if (!uploadSuccessFileMap.contains(item.id)) {
-              uploadSuccessFileMap.put(item.id, item)
+            if (!this.uploadSuccessFileMap.contains(item.id)) {
+              this.uploadSuccessFileMap.put(item.id, item)
             }
           }
         }
       }
       // 全成功
       if (allSuccess) {
-        this.$emit('all-success', uploadSuccessFileMap.values())
-        uploadSuccessFileMap.clear()
-        needUploadFileIdSet = new Collections.HashSet()
+        this.$emit('all-success', this.uploadSuccessFileMap.values())
+        this.uploadSuccessFileMap.clear()
+        this.needUploadFileIdSet = new Collections.HashSet()
       }
     },
 
