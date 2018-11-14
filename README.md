@@ -18,7 +18,7 @@
   - [x] Chunk upload
 
 原版本: v2.8.15
-本组件使用此版本号: v2.8.17 (只是修改了一些功能)
+本组件使用此版本号: v2.8.20 (只是修改了一些功能)
 
 # Pre
 > 此组件是使用 vue-upload-component 根据项目需要修改而来，依然采用Apache 2.0协议。 如有侵权请告知删除 lan6995@gmail.com
@@ -27,8 +27,12 @@
 2. 修改了input-file与input-filter两个事件，添加一个参数`evt` 用以简单识别事件类型
 3. 添加上传成功事件：`single-success` 单文件上传完毕 、 `all-success` 所有文件上传完毕
 4. 自定义实现了ChunkUploadHandler
-  1. 将startBody/uploadBody/finishBody的获取方式修改为`从文件获取`(独立)，原方式: 从chunkOptions中获取(统一)
-  2. 将updateFileProgress的实现从 this.file.progress = this.progress 修改为 this.uploader.update(this.file, { progress: this.progress }) 以触发事件
+  - 将startBody/uploadBody/finishBody的获取方式修改为`从文件获取`(独立)，原方式: 从chunkOptions中获取(统一)
+  - 将updateFileProgress的实现从 this.file.progress = this.progress 修改为 this.uploader.update(this.file, { progress: this.progress }) 以触发事件
+5. 添加自动获取文件md5功能: 触发上传时生成并保存至file.md5 注: 文件md5取 chunk_head/chunk_middle/chunk_tail 生成
+6. 添加文件秒传功能 (任意方式)
+7. 添加断点续传功能 (chunk方式)
+8. 将上传按钮与上传组件分离,可简单实现多个按钮选择文件到同一个uploader上.
 
 其余均与原组件 v2.8.15 无差别
 

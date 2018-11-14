@@ -1,48 +1,21 @@
 <template>
-  <span :class="className">
-    <slot></slot>
-    <label :for="inputId || name"></label>
-    <input-file></input-file>
+  <span class="file-uploads">
   </span>
 </template>
 <style>
 .file-uploads {
-  overflow: hidden;
+  /* overflow: hidden; */
   position: relative;
   text-align: center;
-  display: inline-block;
-}
-.file-uploads.file-uploads-html4 input[type='file'],
-.file-uploads.file-uploads-html5 label {
-  /* background fix ie  click */
-  background: #fff;
-  opacity: 0;
-  font-size: 20em;
-  z-index: 1;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  position: absolute;
-  width: 100%;
-  height: 100%;
-}
-.file-uploads.file-uploads-html5 input[type='file'],
-.file-uploads.file-uploads-html4 label {
-  /* background fix ie  click */
-  background: rgba(255, 255, 255, 0);
-  overflow: hidden;
-  position: fixed;
-  width: 1px;
-  height: 1px;
-  z-index: -1;
-  opacity: 0;
+  display: none;
+  /* display: inline-block; */
 }
 </style>
 <script>
-// import ChunkUploadDefaultHandler from './chunk/ChunkUploadHandler'
-import LanChunkUploadHandler from './chunk/LanChunkUploadHandler'
-import InputFile from './InputFile.vue'
+// import ChunkUploadDefaultHandler from '../chunk/ChunkUploadHandler'
+import LanChunkUploadHandler from '../chunk/LanChunkUploadHandler'
+import { getFilePartMD5 } from '../utils/utils.js'
+import Collections from 'js_data-collections'
 
 const CHUNK_DEFAULT_OPTIONS = {
   headers: {},
@@ -60,31 +33,20 @@ const EVENT_ENUM = {
   REMOVE: 'remove',
 }
 
-let needUploadFileIdArray = []
+let needUploadFileIdSet = new Collections.HashSet()
+let uploadSuccessFileMap = new Collections.HashMap()
 
 export default {
-  components: {
-    InputFile,
-  },
+  name: 'lan-uploader',
   props: {
-    inputId: {
-      type: String,
-    },
-
     name: {
       type: String,
       default: 'file',
     },
 
-    accept: {
-      type: String,
-    },
-
-    capture: {
-    },
-
     multiple: {
       type: Boolean,
+      default: false
     },
 
     maximum: {
@@ -98,10 +60,6 @@ export default {
       type: [Boolean, Number],
     },
 
-    directory: {
-      type: Boolean,
-    },
-
     postAction: {
       type: String,
     },
@@ -112,6 +70,21 @@ export default {
 
     customAction: {
       type: Function,
+    },
+
+    /**
+     * check的url
+     */
+    checkAction: {
+      type: String,
+    },
+
+    /**
+     * 是否需要将数据入库
+     */
+    db: {
+      type: Boolean,
+      default: false
     },
 
     headers: {
@@ -128,7 +101,6 @@ export default {
       type: Number,
       default: 0,
     },
-
 
     drop: {
       default: false,
@@ -147,7 +119,6 @@ export default {
     extensions: {
       default: Array,
     },
-
 
     value: {
       type: Array,
@@ -280,32 +251,12 @@ export default {
 
     chunkOptions() {
       return Object.assign(CHUNK_DEFAULT_OPTIONS, this.chunk)
-    },
-
-    className() {
-      return [
-        'file-uploads',
-        this.features.html5 ? 'file-uploads-html5' : 'file-uploads-html4',
-        this.features.directory && this.directory ? 'file-uploads-directory' : undefined,
-        this.features.drop && this.drop ? 'file-uploads-drop' : undefined,
-      ]
     }
   },
 
 
   watch: {
     active(active) {
-      // 触发上传,记录本次需上传文件ID列表
-      if (active) {
-        needUploadFileIdArray = []
-        let file
-        for (let i = 0, len = this.files.length; i < len; ++i) {
-          file = this.files[i]
-          if (file.fileObject && !file.success && !file.error) {
-            needUploadFileIdArray.push(file.id)
-          }
-        }
-      }
       this.watchActive(active)
     },
 
@@ -392,7 +343,8 @@ export default {
     },
 
     // 添加
-    add(_files, index = this.addIndex) {
+    // 2018-11-08 将此方法改为async
+    async add(_files, index = this.addIndex) {
       let files = _files
       let isArray = files instanceof Array
 
@@ -406,10 +358,18 @@ export default {
       for (let i = 0; i < files.length; i++) {
         let file = files[i]
         if (this.features.html5 && file instanceof Blob) {
+          let relativePath = ''
+          if (file.webkitRelativePath) {
+            relativePath = file.webkitRelativePath.replace(file.name, '')
+          }
+          if (file.relativePath) {
+            relativePath = file.relativePath.replace(file.name, '')
+          }
           file = {
             file,
             size: file.size,
-            name: file.webkitRelativePath || file.relativePath || file.name || 'unknown',
+            relativePath,
+            name: file.name || '',
             type: file.type,
           }
         }
@@ -428,6 +388,7 @@ export default {
             fileObject: true,
             size: -1,
             name: 'Filename',
+            relativePath: '',
             type: '',
             active: false,
             error: '',
@@ -445,20 +406,32 @@ export default {
             // iframe: false,             // 只读
           }
 
+          try {
+            file.md5 = await this.md5Action(file.file)
+          } catch (e) {
+            continue
+          }
+
+          // 必须包含 id
+          if (!file.id) {
+            file.id = Math.random().toString(36).substr(2)
+          }
+
           file.data = {
             ...this.data,
             ...file.data ? file.data : {},
+            id: file.id,
+            db: this.db,
+            md5: file.md5,
+            name: file.name,
+            relativePath: file.relativePath,
+            lastModified: file.file.lastModified
           }
 
           file.headers = {
             ...this.headers,
             ...file.headers ? file.headers : {},
           }
-        }
-
-        // 必须包含 id
-        if (!file.id) {
-          file.id = Math.random().toString(36).substr(2)
         }
 
         if (this.emitFilter(file, undefined, EVENT_ENUM.ADD)) {
@@ -517,17 +490,23 @@ export default {
       return isArray ? addFiles : addFiles[0]
     },
 
-
-
     // 添加表单文件
     addInputFile(el) {
       let files = []
       if (el.files) {
         for (let i = 0; i < el.files.length; i++) {
           let file = el.files[i]
+          let relativePath = ''
+          if (file.webkitRelativePath) {
+            relativePath = file.webkitRelativePath.replace(file.name, '')
+          }
+          if (file.relativePath) {
+            relativePath = file.relativePath.replace(file.name, '')
+          }
           files.push({
             size: file.size,
-            name: file.webkitRelativePath || file.relativePath || file.name,
+            relativePath,
+            name: file.name || '',
             type: file.type,
             file,
           })
@@ -568,7 +547,10 @@ export default {
             let item = items[i]
             // 结束 文件数量大于 最大数量
             if (!item || (this.maximum > 0 && files.length >= this.maximum)) {
-              return resolve(this.add(files))
+              this.add(files).then((res) => {
+                return resolve(res)
+              })
+              // return resolve(this.add(files))
             }
             this.getEntry(item).then(function (results) {
               files.push(...results)
@@ -586,7 +568,8 @@ export default {
             break
           }
         }
-        return Promise.resolve(this.add(files))
+        // return Promise.resolve(this.add(files))
+        return this.add(files)
       }
 
       return Promise.resolve([])
@@ -601,7 +584,8 @@ export default {
             resolve([
               {
                 size: file.size,
-                name: path + file.name,
+                relativePath: path,
+                name: file.name || '',
                 type: file.type,
                 file,
               }
@@ -682,6 +666,7 @@ export default {
 
     // 更新
     update(id, data) {
+      // console.log('update', id, data)
       let file = this.get(id)
       if (file) {
         let newFile = {
@@ -713,17 +698,6 @@ export default {
         // 事件
         this.emitInput()
 
-        // 进度
-        let allProgress = 0.00
-        let item
-        for (let i = 0, len = this.files.length; i < len; ++i) {
-          item = this.files[i]
-          if (item.fileObject && needUploadFileIdArray.indexOf(item.id) !== -1) {
-            allProgress += Number(item.progress)
-          }
-        }
-        this.progress = allProgress / needUploadFileIdArray.length
-
         // 上传成功
         if (newFile.success && !file.success && data.success) {
           this.emitSuccess(newFile)
@@ -732,6 +706,23 @@ export default {
         return newFile
       }
       return false
+    },
+
+    /**
+     * 刷新总进度
+     */
+    refreshProgress() {
+      // 进度
+      let allProgress = 0.00
+      let item
+      for (let i = 0, len = this.files.length; i < len; ++i) {
+        item = this.files[i]
+        if (item.fileObject && needUploadFileIdSet.has(item.id)) {
+          allProgress += Number(item.progress)
+        }
+      }
+      const allNumber = needUploadFileIdSet.cardinality()
+      this.progress = allNumber === 0 ? 0 : allProgress / allNumber
     },
 
     // 预处理 事件 过滤器
@@ -746,14 +737,13 @@ export default {
 
     // 处理后 事件 分发
     emitFile(newFile, oldFile, evt) {
-      // 计算总体进度
-      let newLength = needUploadFileIdArray.length
-      if (evt === 'add') {
-        newLength++
-      } else if (evt === 'remove') {
-        newLength--
+      if (evt === EVENT_ENUM.ADD) {
+        needUploadFileIdSet.add(newFile.id)
+      } else if (evt === EVENT_ENUM.REMOVE) {
+        needUploadFileIdSet.remove(oldFile.id)
       }
-      this.progress = this.progress * needUploadFileIdArray.length / newLength
+      // console.log('length', oldLength, newLength)
+      this.refreshProgress()
       // 自动上传
       if (Boolean(newFile) !== Boolean(oldFile) || oldFile.error !== newFile.error) {
         if (!this.active && this.autoUpload) {
@@ -761,7 +751,6 @@ export default {
         }
       }
       this.$emit('input-file', newFile, oldFile, evt)
-
 
       if (newFile && newFile.fileObject && newFile.active && (!oldFile || !oldFile.active)) {
         this.uploading++
@@ -804,48 +793,196 @@ export default {
     emitSuccess(file) {
       this.$emit('single-success', file)
 
-      let res = []
-
       let item
       let allSuccess = true
       for (let i = 0, len = this.files.length; i < len; ++i) {
         item = this.files[i]
-        if (item.fileObject && needUploadFileIdArray.indexOf(item.id) !== -1) {
+        if (item.fileObject && needUploadFileIdSet.has(item.id)) {
           if (!item.success || item.error) {
             allSuccess = false
           } else {
-            res.push(item)
+            if (!uploadSuccessFileMap.contains(item.id)) {
+              uploadSuccessFileMap.put(item.id, item)
+            }
           }
         }
       }
-      // 数量成功限定
-      if (allSuccess && res.length === needUploadFileIdArray.length) {
-        this.$emit('all-success', res)
+      // 全成功
+      if (allSuccess) {
+        this.$emit('all-success', uploadSuccessFileMap.values())
+        uploadSuccessFileMap.clear()
+        needUploadFileIdSet = new Collections.HashSet()
       }
     },
 
+    /**
+     * 获取文件md5
+     */
+    md5Action(file) {
+      return new Promise((resolve, reject) => {
+        // console.log('获取md5')
+        getFilePartMD5(file).then(res => {
+          // console.log('获取成功,更新文件信息', res)
+          // this.update(file, { md5: res })
+          // console.log('更新成功')
+          resolve(res)
+        }).catch(e => {
+          reject(e)
+        })
+      })
+    },
+
+    /**
+     * check is there has file or chunk on server
+     * if there is file on server, return file
+     * if there is chunks on server
+     * 文件秒传 与 断点续传
+     */
+    check(id) {
+      let file = this.get(id)
+      // 融合 文件data
+      // 生成查询串
+      let querys = []
+      let value
+      for (let key in file.data) {
+        value = file.data[key]
+        if (value !== null && value !== undefined) {
+          querys.push(encodeURIComponent(key) + '=' + encodeURIComponent(value))
+        }
+      }
+      let queryString = querys.length ? (this.checkAction.indexOf('?') === -1 ? '?' : '&') + querys.join('&') : ''
+      let xhr = new XMLHttpRequest()
+      xhr.open('GET', this.checkAction + queryString)
+
+      return new Promise((resolve, reject) => {
+        let complete
+        let fn = (e) => {
+          // 已经处理过了
+          if (complete) {
+            return
+          }
+
+          file = this.get(file)
+
+          // 不存在直接响应
+          if (!file) {
+            return reject('not_exists')
+          }
+
+          // 不是文件对象
+          if (!file.fileObject) {
+            return reject('file_object')
+          }
+
+          // 有错误自动响应
+          if (file.error) {
+            return reject(file.error)
+          }
+
+          // 未激活
+          if (!file.active) {
+            return reject('abort')
+          }
+
+          // 已完成 直接相应
+          if (file.success) {
+            return resolve({ status: 'success' })
+          }
+
+          let data = {}
+
+          switch (e.type) {
+            case 'timeout':
+            case 'abort':
+              data.error = e.type
+              break
+            case 'error':
+              if (!xhr.status) {
+                data.error = 'network'
+              } else if (xhr.status >= 500) {
+                data.error = 'server'
+              } else if (xhr.status >= 400) {
+                data.error = 'denied'
+              }
+              break
+            default:
+              if (xhr.status >= 500) {
+                data.error = 'server'
+              } else if (xhr.status >= 400) {
+                data.error = 'denied'
+              } else {
+                data.progress = '100.00'
+              }
+          }
+
+          if (xhr.responseText) {
+            let contentType = xhr.getResponseHeader('Content-Type')
+            if (contentType && contentType.indexOf('/json') !== -1) {
+              data.response = JSON.parse(xhr.responseText)
+            } else {
+              data.response = xhr.responseText
+            }
+          }
+
+          // 相应错误
+          if (file.error) {
+            return reject(file.error)
+          }
+
+          // 响应
+          return resolve(data)
+        }
+
+        // 事件
+        xhr.onload = fn
+        xhr.onerror = fn
+        xhr.onabort = fn
+        xhr.ontimeout = fn
+
+        // 超时
+        if (file.timeout) {
+          xhr.timeout = file.timeout
+        }
+
+        // headers
+        for (let key in file.headers) {
+          xhr.setRequestHeader(key, file.headers[key])
+        }
+
+        // 更新 xhr
+        // file = this.update(file, { xhr })
+
+        // 开始上传
+        xhr.send()
+      })
+    },
+
     // 上传
-    upload(id) {
+    async upload(id) {
       let file = this.get(id)
 
       // 被删除
       if (!file) {
-        return Promise.reject('not_exists')
+        throw new Error('not_exists')
+        // return Promise.reject('not_exists')
       }
 
       // 不是文件对象
       if (!file.fileObject) {
-        return Promise.reject('file_object')
+        throw new Error('file_object')
+        // return Promise.reject('file_object')
       }
 
       // 有错误直接响应
       if (file.error) {
-        return Promise.reject(file.error)
+        throw new Error(file.error)
+        // return Promise.reject(file.error)
       }
 
       // 已完成直接响应
       if (file.success) {
-        return Promise.resolve(file)
+        return file
+        // return Promise.resolve(file)
       }
 
       // 后缀
@@ -858,34 +995,91 @@ export default {
           extensions = new RegExp('\\.(' + extensions.join('|').replace(/\./g, '\\.') + ')$', 'i')
         }
         if (file.name.search(extensions) === -1) {
-          return Promise.reject('extension')
+          throw new Error('extension')
+          // return Promise.reject('extension')
         }
       }
 
       // 大小
       if (this.size > 0 && file.size >= 0 && file.size > this.size) {
-        return Promise.reject('size')
+        throw new Error('size')
+        // return Promise.reject('size')
       }
 
+      if (this.checkAction) {
+        try {
+          const result = await this.check(file)
+          const res = result.response
+          if (res.status === 'success') {
+            // 文件已存在
+            this.update(file, result)
+            return true// 直接成功
+          } else if (res.status === 'chunks') {
+            // chunks 已存在
+            this.update(file, { uploadedChunks: res.chunks })
+            file.uploadedChunks = res.chunks
+          } else if (res.status === 'upload') {
+            // 传文件并更新记录
+            this.update(file, {
+              data: { pass_through: res.pass_through },
+              finishBody: { pass_through: res.pass_through }
+            })
+          }
+        } catch (e) {
+          throw new Error('check')
+        }
+      }
+
+      // 自定义action
       if (this.customAction) {
-        return this.customAction(file, this)
+        try {
+          const tmp = await this.customAction(file, this)
+          return tmp
+        } catch (e) {
+          throw e
+        }
       }
 
       if (this.features.html5) {
         if (this.shouldUseChunkUpload(file)) {
-          return this.uploadChunk(file)
+          try {
+            const tmp = await this.uploadChunk(file)
+            return tmp
+          } catch (e) {
+            throw e
+          }
         }
         if (file.putAction) {
-          return this.uploadPut(file)
+          try {
+            const tmp = await this.uploadPut(file)
+            return tmp
+          } catch (e) {
+            throw e
+          }
+          // return this.uploadPut(file)
         }
         if (file.postAction) {
-          return this.uploadHtml5(file)
+          try {
+            const tmp = await this.uploadHtml5(file)
+            return tmp
+          } catch (e) {
+            throw e
+          }
+          // return this.uploadHtml5(file)
         }
       }
       if (file.postAction) {
-        return this.uploadHtml4(file)
+        try {
+          const tmp = await this.uploadHtml4(file)
+          return tmp
+        } catch (e) {
+          throw e
+        }
+        // return this.uploadHtml4(file)
       }
-      return Promise.reject('No action configured')
+
+      throw new Error('No action configured')
+      // return Promise.reject('No action configured')
     },
 
     /**
