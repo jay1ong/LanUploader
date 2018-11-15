@@ -344,6 +344,7 @@ export default {
     // 添加
     // 2018-11-08 将此方法改为async
     async add(_files, index = this.addIndex) {
+      // console.time('add')
       let files = _files
       let isArray = files instanceof Array
 
@@ -405,12 +406,6 @@ export default {
             // iframe: false,             // 只读
           }
 
-          try {
-            file.md5 = await this.md5Action(file.file)
-          } catch (e) {
-            continue
-          }
-
           // 必须包含 id
           if (!file.id) {
             file.id = Math.random().toString(36).substr(2)
@@ -421,7 +416,6 @@ export default {
             ...file.data ? file.data : {},
             id: file.id,
             db: this.db,
-            md5: file.md5,
             name: file.name,
             relativePath: file.relativePath,
             lastModified: file.file.lastModified
@@ -449,7 +443,6 @@ export default {
           break
         }
       }
-
       // 没有文件
       if (!addFiles.length) {
         return false
@@ -459,7 +452,6 @@ export default {
       if (this.maximum === 1) {
         this.clear()
       }
-
 
       // 添加进去 files
       let newFiles
@@ -482,15 +474,17 @@ export default {
 
       // 事件
       this.emitInput()
-      for (let i = 0; i < addFiles.length; i++) {
-        this.emitFile(addFiles[i], undefined, EVENT_ENUM.ADD)
-      }
+      // for (let i = 0; i < addFiles.length; i++) {
+      //   this.emitFile(addFiles[i], undefined, EVENT_ENUM.ADD)
+      // }
 
+      // console.timeEnd('add')
       return isArray ? addFiles : addFiles[0]
     },
 
     // 添加表单文件
     addInputFile(el) {
+      // console.time('addInputFile')
       let files = []
       if (el.files) {
         for (let i = 0; i < el.files.length; i++) {
@@ -518,6 +512,7 @@ export default {
           el,
         })
       }
+      // console.timeEnd('addInputFile')
       return this.add(files)
     },
 
@@ -1003,6 +998,16 @@ export default {
       if (this.size > 0 && file.size >= 0 && file.size > this.size) {
         throw new Error('size')
         // return Promise.reject('size')
+      }
+
+      try {
+        const md5 = await this.md5Action(file.file)
+        file.data = {
+          ...file.data,
+          md5
+        }
+      } catch (e) {
+        throw new Error('md5')
       }
 
       if (this.checkAction) {

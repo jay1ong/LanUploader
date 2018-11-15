@@ -1,6 +1,6 @@
 /*!
  * Name: lan-uploader
- * Version: 2.8.21
+ * Version: 2.8.22
  * Author: northlan
  */
 (function (global, factory) {
@@ -4815,12 +4815,13 @@
 
         var index = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : this.addIndex;
         return _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee() {
-          var files, isArray, addFiles, i, file, relativePath, fileObject, newFiles, _newFiles, _i, _file2, _i2;
+          var files, isArray, addFiles, i, file, relativePath, fileObject, newFiles, _newFiles, _i, _file2;
 
           return regeneratorRuntime.wrap(function _callee$(_context) {
             while (1) {
               switch (_context.prev = _context.next) {
                 case 0:
+                  // console.time('add')
                   files = _files;
                   isArray = files instanceof Array;
 
@@ -4836,7 +4837,7 @@
 
                 case 5:
                   if (!(i < files.length)) {
-                    _context.next = 34;
+                    _context.next = 21;
                     break;
                   }
 
@@ -4868,109 +4869,87 @@
                   } else if (typeof Blob !== 'undefined' && file.file instanceof Blob) {
                     fileObject = true;
                   }
+                  if (fileObject) {
+                    file = _extends$1({
+                      fileObject: true,
+                      size: -1,
+                      name: 'Filename',
+                      relativePath: '',
+                      type: '',
+                      active: false,
+                      error: '',
+                      success: false,
+                      putAction: _this.putAction,
+                      postAction: _this.postAction,
+                      timeout: _this.timeout
+                    }, file, {
+                      response: {},
 
-                  if (!fileObject) {
-                    _context.next = 24;
+                      uploader: _this,
+                      progress: '0.00', // 只读
+                      speed: 0 // 只读
+                      // xhr: false,                // 只读
+                      // iframe: false,             // 只读
+
+
+                      // 必须包含 id
+                    });if (!file.id) {
+                      file.id = Math.random().toString(36).substr(2);
+                    }
+
+                    file.data = _extends$1({}, _this.data, file.data ? file.data : {}, {
+                      id: file.id,
+                      db: _this.db,
+                      name: file.name,
+                      relativePath: file.relativePath,
+                      lastModified: file.file.lastModified
+                    });
+
+                    file.headers = _extends$1({}, _this.headers, file.headers ? file.headers : {});
+                  }
+
+                  if (!_this.emitFilter(file, undefined, EVENT_ENUM.ADD)) {
+                    _context.next = 13;
                     break;
                   }
 
-                  file = _extends$1({
-                    fileObject: true,
-                    size: -1,
-                    name: 'Filename',
-                    relativePath: '',
-                    type: '',
-                    active: false,
-                    error: '',
-                    success: false,
-                    putAction: _this.putAction,
-                    postAction: _this.postAction,
-                    timeout: _this.timeout
-                  }, file, {
-                    response: {},
+                  return _context.abrupt('continue', 18);
 
-                    uploader: _this,
-                    progress: '0.00', // 只读
-                    speed: 0 // 只读
-                    // xhr: false,                // 只读
-                    // iframe: false,             // 只读
-                  });
+                case 13:
+                  if (!(_this.maximum > 1 && addFiles.length + _this.files.length >= _this.maximum)) {
+                    _context.next = 15;
+                    break;
+                  }
 
-                  _context.prev = 12;
-                  _context.next = 15;
-                  return _this.md5Action(file.file);
+                  return _context.abrupt('break', 21);
 
                 case 15:
-                  file.md5 = _context.sent;
-                  _context.next = 21;
-                  break;
-
-                case 18:
-                  _context.prev = 18;
-                  _context.t0 = _context['catch'](12);
-                  return _context.abrupt('continue', 31);
-
-                case 21:
-
-                  // 必须包含 id
-                  if (!file.id) {
-                    file.id = Math.random().toString(36).substr(2);
-                  }
-
-                  file.data = _extends$1({}, _this.data, file.data ? file.data : {}, {
-                    id: file.id,
-                    db: _this.db,
-                    md5: file.md5,
-                    name: file.name,
-                    relativePath: file.relativePath,
-                    lastModified: file.file.lastModified
-                  });
-
-                  file.headers = _extends$1({}, _this.headers, file.headers ? file.headers : {});
-
-                case 24:
-                  if (!_this.emitFilter(file, undefined, EVENT_ENUM.ADD)) {
-                    _context.next = 26;
-                    break;
-                  }
-
-                  return _context.abrupt('continue', 31);
-
-                case 26:
-                  if (!(_this.maximum > 1 && addFiles.length + _this.files.length >= _this.maximum)) {
-                    _context.next = 28;
-                    break;
-                  }
-
-                  return _context.abrupt('break', 34);
-
-                case 28:
 
                   addFiles.push(file);
 
                   // 最大数量限制
 
                   if (!(_this.maximum === 1)) {
-                    _context.next = 31;
+                    _context.next = 18;
                     break;
                   }
 
-                  return _context.abrupt('break', 34);
+                  return _context.abrupt('break', 21);
 
-                case 31:
+                case 18:
                   i++;
                   _context.next = 5;
                   break;
 
-                case 34:
+                case 21:
                   if (addFiles.length) {
-                    _context.next = 36;
+                    _context.next = 23;
                     break;
                   }
 
                   return _context.abrupt('return', false);
 
-                case 36:
+                case 23:
 
                   // 如果是 1 清空
                   if (_this.maximum === 1) {
@@ -5000,24 +4979,26 @@
 
                   // 事件
                   _this.emitInput();
-                  for (_i2 = 0; _i2 < addFiles.length; _i2++) {
-                    _this.emitFile(addFiles[_i2], undefined, EVENT_ENUM.ADD);
-                  }
+                  // for (let i = 0; i < addFiles.length; i++) {
+                  //   this.emitFile(addFiles[i], undefined, EVENT_ENUM.ADD)
+                  // }
 
+                  // console.timeEnd('add')
                   return _context.abrupt('return', isArray ? addFiles : addFiles[0]);
 
-                case 44:
+                case 30:
                 case 'end':
                   return _context.stop();
               }
             }
-          }, _callee, _this, [[12, 18]]);
+          }, _callee, _this);
         }))();
       },
 
 
       // 添加表单文件
       addInputFile: function addInputFile(el) {
+        // console.time('addInputFile')
         var files = [];
         if (el.files) {
           for (var i = 0; i < el.files.length; i++) {
@@ -5045,6 +5026,7 @@
             el: el
           });
         }
+        // console.timeEnd('addInputFile')
         return this.add(files);
       },
 
@@ -5090,8 +5072,8 @@
         }
 
         if (dataTransfer.files.length) {
-          for (var _i3 = 0; _i3 < dataTransfer.files.length; _i3++) {
-            files.push(dataTransfer.files[_i3]);
+          for (var _i2 = 0; _i2 < dataTransfer.files.length; _i2++) {
+            files.push(dataTransfer.files[_i2]);
             if (this.maximum > 0 && files.length >= this.maximum) {
               break;
             }
@@ -5492,7 +5474,7 @@
         var _this6 = this;
 
         return _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee2() {
-          var file, extensions, result, res, tmp, _tmp, _tmp2, _tmp3, _tmp4;
+          var file, extensions, md5, result, res, tmp, _tmp, _tmp2, _tmp3, _tmp4;
 
           return regeneratorRuntime.wrap(function _callee2$(_context2) {
             while (1) {
@@ -5570,21 +5552,40 @@
                   throw new Error('size');
 
                 case 16:
+                  _context2.prev = 16;
+                  _context2.next = 19;
+                  return _this6.md5Action(file.file);
+
+                case 19:
+                  md5 = _context2.sent;
+
+                  file.data = _extends$1({}, file.data, {
+                    md5: md5
+                  });
+                  _context2.next = 26;
+                  break;
+
+                case 23:
+                  _context2.prev = 23;
+                  _context2.t0 = _context2['catch'](16);
+                  throw new Error('md5');
+
+                case 26:
                   if (!_this6.checkAction) {
-                    _context2.next = 33;
+                    _context2.next = 43;
                     break;
                   }
 
-                  _context2.prev = 17;
-                  _context2.next = 20;
+                  _context2.prev = 27;
+                  _context2.next = 30;
                   return _this6.check(file);
 
-                case 20:
+                case 30:
                   result = _context2.sent;
                   res = result.response;
 
                   if (!(res.status === 'success')) {
-                    _context2.next = 27;
+                    _context2.next = 37;
                     break;
                   }
 
@@ -5592,7 +5593,7 @@
                   _this6.update(file, result);
                   return _context2.abrupt('return', true);
 
-                case 27:
+                case 37:
                   if (res.status === 'chunks') {
                     // chunks 已存在
                     _this6.update(file, { uploadedChunks: res.chunks });
@@ -5605,124 +5606,124 @@
                     });
                   }
 
-                case 28:
-                  _context2.next = 33;
+                case 38:
+                  _context2.next = 43;
                   break;
 
-                case 30:
-                  _context2.prev = 30;
-                  _context2.t0 = _context2['catch'](17);
+                case 40:
+                  _context2.prev = 40;
+                  _context2.t1 = _context2['catch'](27);
                   throw new Error('check');
 
-                case 33:
+                case 43:
                   if (!_this6.customAction) {
-                    _context2.next = 44;
+                    _context2.next = 54;
                     break;
                   }
 
-                  _context2.prev = 34;
-                  _context2.next = 37;
+                  _context2.prev = 44;
+                  _context2.next = 47;
                   return _this6.customAction(file, _this6);
 
-                case 37:
+                case 47:
                   tmp = _context2.sent;
                   return _context2.abrupt('return', tmp);
 
-                case 41:
-                  _context2.prev = 41;
-                  _context2.t1 = _context2['catch'](34);
-                  throw _context2.t1;
+                case 51:
+                  _context2.prev = 51;
+                  _context2.t2 = _context2['catch'](44);
+                  throw _context2.t2;
 
-                case 44:
+                case 54:
                   if (!_this6.features.html5) {
-                    _context2.next = 78;
+                    _context2.next = 88;
                     break;
                   }
 
                   if (!_this6.shouldUseChunkUpload(file)) {
-                    _context2.next = 56;
+                    _context2.next = 66;
                     break;
                   }
 
-                  _context2.prev = 46;
-                  _context2.next = 49;
+                  _context2.prev = 56;
+                  _context2.next = 59;
                   return _this6.uploadChunk(file);
 
-                case 49:
+                case 59:
                   _tmp = _context2.sent;
                   return _context2.abrupt('return', _tmp);
 
-                case 53:
-                  _context2.prev = 53;
-                  _context2.t2 = _context2['catch'](46);
-                  throw _context2.t2;
+                case 63:
+                  _context2.prev = 63;
+                  _context2.t3 = _context2['catch'](56);
+                  throw _context2.t3;
 
-                case 56:
+                case 66:
                   if (!file.putAction) {
-                    _context2.next = 67;
+                    _context2.next = 77;
                     break;
                   }
 
-                  _context2.prev = 57;
-                  _context2.next = 60;
+                  _context2.prev = 67;
+                  _context2.next = 70;
                   return _this6.uploadPut(file);
 
-                case 60:
+                case 70:
                   _tmp2 = _context2.sent;
                   return _context2.abrupt('return', _tmp2);
 
-                case 64:
-                  _context2.prev = 64;
-                  _context2.t3 = _context2['catch'](57);
-                  throw _context2.t3;
+                case 74:
+                  _context2.prev = 74;
+                  _context2.t4 = _context2['catch'](67);
+                  throw _context2.t4;
 
-                case 67:
+                case 77:
                   if (!file.postAction) {
-                    _context2.next = 78;
+                    _context2.next = 88;
                     break;
                   }
 
-                  _context2.prev = 68;
-                  _context2.next = 71;
+                  _context2.prev = 78;
+                  _context2.next = 81;
                   return _this6.uploadHtml5(file);
 
-                case 71:
+                case 81:
                   _tmp3 = _context2.sent;
                   return _context2.abrupt('return', _tmp3);
 
-                case 75:
-                  _context2.prev = 75;
-                  _context2.t4 = _context2['catch'](68);
-                  throw _context2.t4;
+                case 85:
+                  _context2.prev = 85;
+                  _context2.t5 = _context2['catch'](78);
+                  throw _context2.t5;
 
-                case 78:
+                case 88:
                   if (!file.postAction) {
-                    _context2.next = 89;
+                    _context2.next = 99;
                     break;
                   }
 
-                  _context2.prev = 79;
-                  _context2.next = 82;
+                  _context2.prev = 89;
+                  _context2.next = 92;
                   return _this6.uploadHtml4(file);
 
-                case 82:
+                case 92:
                   _tmp4 = _context2.sent;
                   return _context2.abrupt('return', _tmp4);
 
-                case 86:
-                  _context2.prev = 86;
-                  _context2.t5 = _context2['catch'](79);
-                  throw _context2.t5;
+                case 96:
+                  _context2.prev = 96;
+                  _context2.t6 = _context2['catch'](89);
+                  throw _context2.t6;
 
-                case 89:
+                case 99:
                   throw new Error('No action configured');
 
-                case 90:
+                case 100:
                 case 'end':
                   return _context2.stop();
               }
             }
-          }, _callee2, _this6, [[17, 30], [34, 41], [46, 53], [57, 64], [68, 75], [79, 86]]);
+          }, _callee2, _this6, [[16, 23], [27, 40], [44, 51], [56, 63], [67, 74], [78, 85], [89, 96]]);
         }))();
       },
 
@@ -6245,7 +6246,7 @@
   /* style */
   var __vue_inject_styles__ = function __vue_inject_styles__(inject) {
     if (!inject) return;
-    inject("data-v-2d5786d7_0", { source: "\n.file-uploads{position:relative;text-align:center;display:none\n}", map: undefined, media: undefined });
+    inject("data-v-6f479520_0", { source: "\n.file-uploads{position:relative;text-align:center;display:none\n}", map: undefined, media: undefined });
   };
   /* scoped */
   var __vue_scope_id__ = undefined;
