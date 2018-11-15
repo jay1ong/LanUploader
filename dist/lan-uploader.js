@@ -1,6 +1,6 @@
 /*!
  * Name: lan-uploader
- * Version: 2.8.22
+ * Version: 2.8.23
  * Author: northlan
  */
 (function (global, factory) {
@@ -5243,17 +5243,19 @@
           isPrevent = true;
           return isPrevent;
         }, evt);
+        if (!isPrevent) {
+          if (evt === EVENT_ENUM.ADD) {
+            this.needUploadFileIdSet.add(newFile.id);
+          } else if (evt === EVENT_ENUM.REMOVE) {
+            this.needUploadFileIdSet.remove(oldFile.id);
+          }
+        }
         return isPrevent;
       },
 
 
       // 处理后 事件 分发
       emitFile: function emitFile(newFile, oldFile, evt) {
-        if (evt === EVENT_ENUM.ADD) {
-          this.needUploadFileIdSet.add(newFile.id);
-        } else if (evt === EVENT_ENUM.REMOVE) {
-          this.needUploadFileIdSet.remove(oldFile.id);
-        }
         // console.log('length', oldLength, newLength)
         this.refreshProgress();
         // 自动上传
@@ -6246,7 +6248,7 @@
   /* style */
   var __vue_inject_styles__ = function __vue_inject_styles__(inject) {
     if (!inject) return;
-    inject("data-v-6f479520_0", { source: "\n.file-uploads{position:relative;text-align:center;display:none\n}", map: undefined, media: undefined });
+    inject("data-v-3ad101b5_0", { source: "\n.file-uploads{position:relative;text-align:center;display:none\n}", map: undefined, media: undefined });
   };
   /* scoped */
   var __vue_scope_id__ = undefined;
