@@ -26,7 +26,8 @@ export default class LanChunkUploadHandler extends ChunkUploadHandler {
   get finishBody() {
     return {
       ...this.file.finishBody,
-      ...this.file.data
+      ...this.file.data,
+      size: this.fileSize
     }
   }
 

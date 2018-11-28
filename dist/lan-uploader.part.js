@@ -1,6 +1,6 @@
 /*!
  * Name: lan-uploader
- * Version: 2.8.23
+ * Version: 2.8.38
  * Author: northlan
  */
 (function (global, factory) {
@@ -643,7 +643,9 @@
     }, {
       key: 'finishBody',
       get: function get() {
-        return _extends({}, this.file.finishBody, this.file.data);
+        return _extends({}, this.file.finishBody, this.file.data, {
+          size: this.fileSize
+        });
       }
 
       /**
@@ -4610,6 +4612,14 @@
       autoUpload: {
         type: Boolean,
         default: false
+      },
+
+      /**
+       * 修改value时是否触发事件
+       */
+      evtOnChangeValue: {
+        type: Boolean,
+        default: true
       }
     },
 
@@ -4623,6 +4633,7 @@
         },
         needUploadFileIdSet: new Collections.HashSet(),
         uploadSuccessFileMap: new Collections.HashMap(),
+        uploadFailFileMap: new Collections.HashMap(),
 
         active: false,
         dropActive: false,
@@ -4752,23 +4763,25 @@
           this.maps[file.id] = file;
         }
 
-        // add, update
-        for (var key in this.maps) {
-          var newFile = this.maps[key];
-          var oldFile = oldMaps[key];
-          if (newFile !== oldFile) {
-            if (newFile && oldFile) {
-              this.emitFile(newFile, oldFile, EVENT_ENUM.UPDATE);
-            } else if (newFile && !oldFile) {
-              this.emitFile(newFile, oldFile, EVENT_ENUM.ADD);
+        if (this.evtOnChangeValue) {
+          // add, update
+          for (var key in this.maps) {
+            var newFile = this.maps[key];
+            var oldFile = oldMaps[key];
+            if (newFile !== oldFile) {
+              if (newFile && oldFile) {
+                this.emitFile(newFile, oldFile, EVENT_ENUM.UPDATE);
+              } else if (newFile && !oldFile) {
+                this.emitFile(newFile, oldFile, EVENT_ENUM.ADD);
+              }
             }
           }
-        }
 
-        // delete
-        for (var _key in oldMaps) {
-          if (!this.maps[_key]) {
-            this.emitFile(undefined, oldMaps[_key], EVENT_ENUM.REMOVE);
+          // delete
+          for (var _key in oldMaps) {
+            if (!this.maps[_key]) {
+              this.emitFile(undefined, oldMaps[_key], EVENT_ENUM.REMOVE);
+            }
           }
         }
       }
@@ -4777,6 +4790,8 @@
     methods: {
       // 清空
       clear: function clear() {
+        var triggerEvt = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : true;
+
         if (this.files.length) {
           var files = this.files;
           this.files = [];
@@ -4786,8 +4801,10 @@
 
           // 事件
           this.emitInput();
-          for (var i = 0; i < files.length; i++) {
-            this.emitFile(undefined, files[i], EVENT_ENUM.REMOVE);
+          if (triggerEvt) {
+            for (var i = 0; i < files.length; i++) {
+              this.emitFile(undefined, files[i], EVENT_ENUM.REMOVE);
+            }
           }
         }
         return true;
@@ -4837,7 +4854,7 @@
 
                 case 5:
                   if (!(i < files.length)) {
-                    _context.next = 21;
+                    _context.next = 24;
                     break;
                   }
 
@@ -4909,47 +4926,50 @@
                   }
 
                   if (!_this.emitFilter(file, undefined, EVENT_ENUM.ADD)) {
-                    _context.next = 13;
-                    break;
-                  }
-
-                  return _context.abrupt('continue', 18);
-
-                case 13:
-                  if (!(_this.maximum > 1 && addFiles.length + _this.files.length >= _this.maximum)) {
                     _context.next = 15;
                     break;
                   }
 
-                  return _context.abrupt('break', 21);
+                  return _context.abrupt('continue', 21);
 
                 case 15:
+                  _this.needUploadFileIdSet.add(file.id);
+
+                case 16:
+                  if (!(_this.maximum > 1 && addFiles.length + _this.files.length >= _this.maximum)) {
+                    _context.next = 18;
+                    break;
+                  }
+
+                  return _context.abrupt('break', 24);
+
+                case 18:
 
                   addFiles.push(file);
 
                   // 最大数量限制
 
                   if (!(_this.maximum === 1)) {
-                    _context.next = 18;
+                    _context.next = 21;
                     break;
                   }
 
-                  return _context.abrupt('break', 21);
+                  return _context.abrupt('break', 24);
 
-                case 18:
+                case 21:
                   i++;
                   _context.next = 5;
                   break;
 
-                case 21:
+                case 24:
                   if (addFiles.length) {
-                    _context.next = 23;
+                    _context.next = 26;
                     break;
                   }
 
                   return _context.abrupt('return', false);
 
-                case 23:
+                case 26:
 
                   // 如果是 1 清空
                   if (_this.maximum === 1) {
@@ -4979,6 +4999,7 @@
 
                   // 事件
                   _this.emitInput();
+                  _this.emitAllIn();
                   // for (let i = 0; i < addFiles.length; i++) {
                   //   this.emitFile(addFiles[i], undefined, EVENT_ENUM.ADD)
                   // }
@@ -4986,7 +5007,7 @@
                   // console.timeEnd('add')
                   return _context.abrupt('return', isArray ? addFiles : addFiles[0]);
 
-                case 30:
+                case 34:
                 case 'end':
                   return _context.stop();
               }
@@ -5151,10 +5172,14 @@
 
       // 移除
       remove: function remove(id) {
+        var triggerEvt = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : true;
+
         var file = this.get(id);
         if (file) {
-          if (this.emitFilter(undefined, file, EVENT_ENUM.REMOVE)) {
+          if (triggerEvt && this.emitFilter(undefined, file, EVENT_ENUM.REMOVE)) {
             return false;
+          } else {
+            this.needUploadFileIdSet.remove(file.id);
           }
           var _files3 = this.files.concat([]);
           var index = _files3.indexOf(file);
@@ -5170,7 +5195,7 @@
 
           // 事件
           this.emitInput();
-          this.emitFile(undefined, file, EVENT_ENUM.REMOVE);
+          triggerEvt && this.emitFile(undefined, file, EVENT_ENUM.REMOVE);
         }
         return file;
       },
@@ -5178,7 +5203,12 @@
 
       // 更新
       update: function update(id, data) {
+        var triggerEvt = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : true;
+
         // console.log('update', id, data)
+        console.log('更新进度条', this.progress);
+        this.refreshProgress();
+        console.log('ok: ', this.progress);
         var file = this.get(id);
         if (file) {
           var newFile = _extends$1({}, file, data);
@@ -5187,7 +5217,7 @@
             newFile.error = 'abort';
           }
 
-          if (this.emitFilter(newFile, file, EVENT_ENUM.UPDATE)) {
+          if (triggerEvt && this.emitFilter(newFile, file, EVENT_ENUM.UPDATE)) {
             return false;
           }
 
@@ -5207,11 +5237,19 @@
           // 事件
           this.emitInput();
 
-          // 上传成功
-          if (newFile.success && !file.success && data.success) {
-            this.emitSuccess(newFile);
+          if (triggerEvt) {
+            // 上传成功
+            if (newFile.success && !file.success && data.success) {
+              this.emitFileSuccess(newFile);
+            }
+            if (newFile.error && data.error) {
+              this.emitFileError(newFile);
+            }
+            if (this.uploadSuccessFileMap.size() + this.uploadFailFileMap.size() === this.needUploadFileIdSet.cardinality()) {
+              this.emitAlldone();
+            }
+            this.emitFile(newFile, file, EVENT_ENUM.UPDATE);
           }
-          this.emitFile(newFile, file, EVENT_ENUM.UPDATE);
           return newFile;
         }
         return false;
@@ -5227,11 +5265,13 @@
         var item = void 0;
         for (var i = 0, len = this.files.length; i < len; ++i) {
           item = this.files[i];
-          if (item.fileObject && this.needUploadFileIdSet.has(item.id)) {
+          if (this.needUploadFileIdSet.has(item.id)) {
             allProgress += Number(item.progress);
           }
         }
         var allNumber = this.needUploadFileIdSet.cardinality();
+        console.log('allNumber', allNumber);
+        console.log('allProgress', allProgress);
         this.progress = allNumber === 0 ? 0 : allProgress / allNumber;
       },
 
@@ -5243,13 +5283,6 @@
           isPrevent = true;
           return isPrevent;
         }, evt);
-        if (!isPrevent) {
-          if (evt === EVENT_ENUM.ADD) {
-            this.needUploadFileIdSet.add(newFile.id);
-          } else if (evt === EVENT_ENUM.REMOVE) {
-            this.needUploadFileIdSet.remove(oldFile.id);
-          }
-        }
         return isPrevent;
       },
 
@@ -5257,13 +5290,7 @@
       // 处理后 事件 分发
       emitFile: function emitFile(newFile, oldFile, evt) {
         // console.log('length', oldLength, newLength)
-        this.refreshProgress();
         // 自动上传
-        if (Boolean(newFile) !== Boolean(oldFile) || oldFile.error !== newFile.error) {
-          if (!this.active && this.autoUpload) {
-            this.active = true;
-          }
-        }
         this.$emit('input-file', newFile, oldFile, evt);
 
         if (newFile && newFile.fileObject && newFile.active && (!oldFile || !oldFile.active)) {
@@ -5304,29 +5331,25 @@
       emitInput: function emitInput() {
         this.$emit('input', this.files);
       },
-      emitSuccess: function emitSuccess(file) {
-        this.$emit('single-success', file);
-
-        var item = void 0;
-        var allSuccess = true;
-        for (var i = 0, len = this.files.length; i < len; ++i) {
-          item = this.files[i];
-          if (item.fileObject && this.needUploadFileIdSet.has(item.id)) {
-            if (!item.success || item.error) {
-              allSuccess = false;
-            } else {
-              if (!this.uploadSuccessFileMap.contains(item.id)) {
-                this.uploadSuccessFileMap.put(item.id, item);
-              }
-            }
-          }
+      emitAllIn: function emitAllIn() {
+        this.$emit('all-in', this.files);
+        if (!this.active && this.autoUpload) {
+          this.active = true;
         }
-        // 全成功
-        if (allSuccess) {
-          this.$emit('all-success', this.uploadSuccessFileMap.values());
-          this.uploadSuccessFileMap.clear();
-          this.needUploadFileIdSet = new Collections.HashSet();
-        }
+      },
+      emitFileSuccess: function emitFileSuccess(file) {
+        this.$emit('file-success', file);
+        this.uploadSuccessFileMap.put(file.id, file);
+      },
+      emitFileError: function emitFileError(file) {
+        this.$emit('file-error', file);
+        this.uploadFailFileMap.put(file.id, file);
+      },
+      emitAlldone: function emitAlldone() {
+        this.$emit('all-done', this.uploadSuccessFileMap.values(), this.uploadFailFileMap.values());
+        this.needUploadFileIdSet = new Collections.HashSet();
+        this.uploadSuccessFileMap.clear();
+        this.uploadFailFileMap.clear();
       },
 
 
@@ -5373,8 +5396,13 @@
         xhr.open('GET', this.checkAction + queryString);
 
         return new Promise(function (resolve, reject) {
+          var complete = void 0;
           var fn = function fn(e) {
-
+            // 已经处理过了
+            if (complete) {
+              return;
+            }
+            complete = true;
             file = _this5.get(file);
 
             // 不存在直接响应
@@ -5404,6 +5432,7 @@
 
             var data = {};
 
+            // console.log('evt', e)
             switch (e.type) {
               case 'timeout':
               case 'abort':
@@ -5424,7 +5453,7 @@
                 } else if (xhr.status >= 400) {
                   data.error = 'denied';
                 } else {
-                  data.progress = '100.00';
+                  data.progress = 100.0;
                 }
             }
 
@@ -5574,7 +5603,7 @@
 
                 case 26:
                   if (!_this6.checkAction) {
-                    _context2.next = 43;
+                    _context2.next = 45;
                     break;
                   }
 
@@ -5598,134 +5627,149 @@
                 case 37:
                   if (res.status === 'chunks') {
                     // chunks 已存在
-                    _this6.update(file, { uploadedChunks: res.chunks });
+                    // this.update(file, { uploadedChunks: res.chunks })
                     file.uploadedChunks = res.chunks;
                   } else if (res.status === 'upload') {
                     // 传文件并更新记录
-                    _this6.update(file, {
-                      data: { pass_through: res.pass_through },
-                      finishBody: { pass_through: res.pass_through }
+                    // this.update(file, {
+                    //   data: { pass_through: res.pass_through },
+                    //   finishBody: { pass_through: res.pass_through }
+                    // })
+                    file.data = _extends$1({}, file.data, {
+                      pass_through: res.pass_through
                     });
+                    file.finishBody = {
+                      pass_through: res.pass_through
+                    };
                   }
 
                 case 38:
-                  _context2.next = 43;
+                  _context2.next = 45;
                   break;
 
                 case 40:
                   _context2.prev = 40;
                   _context2.t1 = _context2['catch'](27);
-                  throw new Error('check');
 
-                case 43:
-                  if (!_this6.customAction) {
-                    _context2.next = 54;
+                  if (!(_context2.t1 === 'abort')) {
+                    _context2.next = 44;
                     break;
                   }
 
-                  _context2.prev = 44;
-                  _context2.next = 47;
+                  throw new Error('abort');
+
+                case 44:
+                  throw new Error('check');
+
+                case 45:
+                  if (!_this6.customAction) {
+                    _context2.next = 56;
+                    break;
+                  }
+
+                  _context2.prev = 46;
+                  _context2.next = 49;
                   return _this6.customAction(file, _this6);
 
-                case 47:
+                case 49:
                   tmp = _context2.sent;
                   return _context2.abrupt('return', tmp);
 
-                case 51:
-                  _context2.prev = 51;
-                  _context2.t2 = _context2['catch'](44);
+                case 53:
+                  _context2.prev = 53;
+                  _context2.t2 = _context2['catch'](46);
                   throw _context2.t2;
 
-                case 54:
+                case 56:
                   if (!_this6.features.html5) {
-                    _context2.next = 88;
+                    _context2.next = 90;
                     break;
                   }
 
                   if (!_this6.shouldUseChunkUpload(file)) {
-                    _context2.next = 66;
+                    _context2.next = 68;
                     break;
                   }
 
-                  _context2.prev = 56;
-                  _context2.next = 59;
+                  _context2.prev = 58;
+                  _context2.next = 61;
                   return _this6.uploadChunk(file);
 
-                case 59:
+                case 61:
                   _tmp = _context2.sent;
                   return _context2.abrupt('return', _tmp);
 
-                case 63:
-                  _context2.prev = 63;
-                  _context2.t3 = _context2['catch'](56);
+                case 65:
+                  _context2.prev = 65;
+                  _context2.t3 = _context2['catch'](58);
                   throw _context2.t3;
 
-                case 66:
+                case 68:
                   if (!file.putAction) {
-                    _context2.next = 77;
+                    _context2.next = 79;
                     break;
                   }
 
-                  _context2.prev = 67;
-                  _context2.next = 70;
+                  _context2.prev = 69;
+                  _context2.next = 72;
                   return _this6.uploadPut(file);
 
-                case 70:
+                case 72:
                   _tmp2 = _context2.sent;
                   return _context2.abrupt('return', _tmp2);
 
-                case 74:
-                  _context2.prev = 74;
-                  _context2.t4 = _context2['catch'](67);
+                case 76:
+                  _context2.prev = 76;
+                  _context2.t4 = _context2['catch'](69);
                   throw _context2.t4;
 
-                case 77:
+                case 79:
                   if (!file.postAction) {
-                    _context2.next = 88;
+                    _context2.next = 90;
                     break;
                   }
 
-                  _context2.prev = 78;
-                  _context2.next = 81;
+                  _context2.prev = 80;
+                  _context2.next = 83;
                   return _this6.uploadHtml5(file);
 
-                case 81:
+                case 83:
                   _tmp3 = _context2.sent;
                   return _context2.abrupt('return', _tmp3);
 
-                case 85:
-                  _context2.prev = 85;
-                  _context2.t5 = _context2['catch'](78);
+                case 87:
+                  _context2.prev = 87;
+                  _context2.t5 = _context2['catch'](80);
                   throw _context2.t5;
 
-                case 88:
+                case 90:
                   if (!file.postAction) {
-                    _context2.next = 99;
+                    _context2.next = 101;
                     break;
                   }
 
-                  _context2.prev = 89;
-                  _context2.next = 92;
+                  _context2.prev = 91;
+                  _context2.next = 94;
                   return _this6.uploadHtml4(file);
 
-                case 92:
+                case 94:
                   _tmp4 = _context2.sent;
                   return _context2.abrupt('return', _tmp4);
 
-                case 96:
-                  _context2.prev = 96;
-                  _context2.t6 = _context2['catch'](89);
+                case 98:
+                  _context2.prev = 98;
+                  _context2.t6 = _context2['catch'](91);
                   throw _context2.t6;
 
-                case 99:
+                case 101:
                   throw new Error('No action configured');
 
-                case 100:
+                case 102:
                 case 'end':
                   return _context2.stop();
               }
             }
-          }, _callee2, _this6, [[16, 23], [27, 40], [44, 51], [56, 63], [67, 74], [78, 85], [89, 96]]);
+          }, _callee2, _this6, [[16, 23], [27, 40], [46, 53], [58, 65], [69, 76], [80, 87], [91, 98]]);
         }))();
       },
 

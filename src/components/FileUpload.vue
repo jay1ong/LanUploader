@@ -30,7 +30,7 @@ const CHUNK_DEFAULT_OPTIONS = {
 const EVENT_ENUM = {
   ADD: 'add',
   UPDATE: 'update',
-  REMOVE: 'remove',
+  REMOVE: 'remove'
 }
 
 export default {
@@ -144,6 +144,14 @@ export default {
     autoUpload: {
       type: Boolean,
       default: false
+    },
+
+    /**
+     * 修改value时是否触发事件
+     */
+    evtOnChangeValue: {
+      type: Boolean,
+      default: true
     }
   },
 
@@ -157,6 +165,7 @@ export default {
       },
       needUploadFileIdSet: new Collections.HashSet(),
       uploadSuccessFileMap: new Collections.HashMap(),
+      uploadFailFileMap: new Collections.HashMap(),
 
       active: false,
       dropActive: false,
@@ -287,23 +296,25 @@ export default {
         this.maps[file.id] = file
       }
 
-      // add, update
-      for (let key in this.maps) {
-        let newFile = this.maps[key]
-        let oldFile = oldMaps[key]
-        if (newFile !== oldFile) {
-          if (newFile && oldFile) {
-            this.emitFile(newFile, oldFile, EVENT_ENUM.UPDATE)
-          } else if (newFile && !oldFile) {
-            this.emitFile(newFile, oldFile, EVENT_ENUM.ADD)
+      if (this.evtOnChangeValue) {
+        // add, update
+        for (let key in this.maps) {
+          let newFile = this.maps[key]
+          let oldFile = oldMaps[key]
+          if (newFile !== oldFile) {
+            if (newFile && oldFile) {
+              this.emitFile(newFile, oldFile, EVENT_ENUM.UPDATE)
+            } else if (newFile && !oldFile) {
+              this.emitFile(newFile, oldFile, EVENT_ENUM.ADD)
+            }
           }
         }
-      }
 
-      // delete
-      for (let key in oldMaps) {
-        if (!this.maps[key]) {
-          this.emitFile(undefined, oldMaps[key], EVENT_ENUM.REMOVE)
+        // delete
+        for (let key in oldMaps) {
+          if (!this.maps[key]) {
+            this.emitFile(undefined, oldMaps[key], EVENT_ENUM.REMOVE)
+          }
         }
       }
     },
@@ -311,7 +322,7 @@ export default {
 
   methods: {
     // 清空
-    clear() {
+    clear(triggerEvt = true) {
       if (this.files.length) {
         let files = this.files
         this.files = []
@@ -321,9 +332,12 @@ export default {
 
         // 事件
         this.emitInput()
-        for (let i = 0; i < files.length; i++) {
-          this.emitFile(undefined, files[i], EVENT_ENUM.REMOVE)
+        if (triggerEvt) {
+          for (let i = 0; i < files.length; i++) {
+            this.emitFile(undefined, files[i], EVENT_ENUM.REMOVE)
+          }
         }
+
       }
       return true
     },
@@ -429,6 +443,8 @@ export default {
 
         if (this.emitFilter(file, undefined, EVENT_ENUM.ADD)) {
           continue
+        } else {
+          this.needUploadFileIdSet.add(file.id)
         }
 
         // 最大数量限制
@@ -474,6 +490,7 @@ export default {
 
       // 事件
       this.emitInput()
+      this.emitAllIn()
       // for (let i = 0; i < addFiles.length; i++) {
       //   this.emitFile(addFiles[i], undefined, EVENT_ENUM.ADD)
       // }
@@ -633,11 +650,13 @@ export default {
     },
 
     // 移除
-    remove(id) {
+    remove(id, triggerEvt = true) {
       let file = this.get(id)
       if (file) {
-        if (this.emitFilter(undefined, file, EVENT_ENUM.REMOVE)) {
+        if (triggerEvt && this.emitFilter(undefined, file, EVENT_ENUM.REMOVE)) {
           return false
+        } else {
+          this.needUploadFileIdSet.remove(file.id)
         }
         let files = this.files.concat([])
         let index = files.indexOf(file)
@@ -653,14 +672,17 @@ export default {
 
         // 事件
         this.emitInput()
-        this.emitFile(undefined, file, EVENT_ENUM.REMOVE)
+        triggerEvt && this.emitFile(undefined, file, EVENT_ENUM.REMOVE)
       }
       return file
     },
 
     // 更新
-    update(id, data) {
+    update(id, data, triggerEvt = true) {
       // console.log('update', id, data)
+      console.log('更新进度条', this.progress)
+      this.refreshProgress()
+      console.log('ok: ', this.progress)
       let file = this.get(id)
       if (file) {
         let newFile = {
@@ -672,7 +694,7 @@ export default {
           newFile.error = 'abort'
         }
 
-        if (this.emitFilter(newFile, file, EVENT_ENUM.UPDATE)) {
+        if (triggerEvt && this.emitFilter(newFile, file, EVENT_ENUM.UPDATE)) {
           return false
         }
 
@@ -692,11 +714,19 @@ export default {
         // 事件
         this.emitInput()
 
-        // 上传成功
-        if (newFile.success && !file.success && data.success) {
-          this.emitSuccess(newFile)
+        if (triggerEvt) {
+          // 上传成功
+          if (newFile.success && !file.success && data.success) {
+            this.emitFileSuccess(newFile)
+          }
+          if (newFile.error && data.error) {
+            this.emitFileError(newFile)
+          }
+          if (this.uploadSuccessFileMap.size() + this.uploadFailFileMap.size() === this.needUploadFileIdSet.cardinality()) {
+            this.emitAlldone()
+          }
+          this.emitFile(newFile, file, EVENT_ENUM.UPDATE)
         }
-        this.emitFile(newFile, file, EVENT_ENUM.UPDATE)
         return newFile
       }
       return false
@@ -711,11 +741,13 @@ export default {
       let item
       for (let i = 0, len = this.files.length; i < len; ++i) {
         item = this.files[i]
-        if (item.fileObject && this.needUploadFileIdSet.has(item.id)) {
+        if (this.needUploadFileIdSet.has(item.id)) {
           allProgress += Number(item.progress)
         }
       }
       const allNumber = this.needUploadFileIdSet.cardinality()
+      console.log('allNumber', allNumber)
+      console.log('allProgress', allProgress)
       this.progress = allNumber === 0 ? 0 : allProgress / allNumber
     },
 
@@ -726,26 +758,13 @@ export default {
         isPrevent = true
         return isPrevent
       }, evt)
-      if (!isPrevent) {
-        if (evt === EVENT_ENUM.ADD) {
-          this.needUploadFileIdSet.add(newFile.id)
-        } else if (evt === EVENT_ENUM.REMOVE) {
-          this.needUploadFileIdSet.remove(oldFile.id)
-        }
-      }
       return isPrevent
     },
 
     // 处理后 事件 分发
     emitFile(newFile, oldFile, evt) {
       // console.log('length', oldLength, newLength)
-      this.refreshProgress()
       // 自动上传
-      if (Boolean(newFile) !== Boolean(oldFile) || oldFile.error !== newFile.error) {
-        if (!this.active && this.autoUpload) {
-          this.active = true
-        }
-      }
       this.$emit('input-file', newFile, oldFile, evt)
 
       if (newFile && newFile.fileObject && newFile.active && (!oldFile || !oldFile.active)) {
@@ -786,29 +805,28 @@ export default {
       this.$emit('input', this.files)
     },
 
-    emitSuccess(file) {
-      this.$emit('single-success', file)
+    emitAllIn() {
+      this.$emit('all-in', this.files)
+      if (!this.active && this.autoUpload) {
+        this.active = true
+      }
+    },
 
-      let item
-      let allSuccess = true
-      for (let i = 0, len = this.files.length; i < len; ++i) {
-        item = this.files[i]
-        if (item.fileObject && this.needUploadFileIdSet.has(item.id)) {
-          if (!item.success || item.error) {
-            allSuccess = false
-          } else {
-            if (!this.uploadSuccessFileMap.contains(item.id)) {
-              this.uploadSuccessFileMap.put(item.id, item)
-            }
-          }
-        }
-      }
-      // 全成功
-      if (allSuccess) {
-        this.$emit('all-success', this.uploadSuccessFileMap.values())
-        this.uploadSuccessFileMap.clear()
-        this.needUploadFileIdSet = new Collections.HashSet()
-      }
+    emitFileSuccess(file) {
+      this.$emit('file-success', file)
+      this.uploadSuccessFileMap.put(file.id, file)
+    },
+
+    emitFileError(file) {
+      this.$emit('file-error', file)
+      this.uploadFailFileMap.put(file.id, file)
+    },
+
+    emitAlldone() {
+      this.$emit('all-done', this.uploadSuccessFileMap.values(), this.uploadFailFileMap.values())
+      this.needUploadFileIdSet = new Collections.HashSet()
+      this.uploadSuccessFileMap.clear()
+      this.uploadFailFileMap.clear()
     },
 
     /**
@@ -857,7 +875,7 @@ export default {
           if (complete) {
             return
           }
-
+          complete = true
           file = this.get(file)
 
           // 不存在直接响应
@@ -887,6 +905,7 @@ export default {
 
           let data = {}
 
+          // console.log('evt', e)
           switch (e.type) {
             case 'timeout':
             case 'abort':
@@ -907,7 +926,7 @@ export default {
               } else if (xhr.status >= 400) {
                 data.error = 'denied'
               } else {
-                data.progress = '100.00'
+                data.progress = 100.0
               }
           }
 
@@ -1022,16 +1041,26 @@ export default {
             return true// 直接成功
           } else if (res.status === 'chunks') {
             // chunks 已存在
-            this.update(file, { uploadedChunks: res.chunks })
+            // this.update(file, { uploadedChunks: res.chunks })
             file.uploadedChunks = res.chunks
           } else if (res.status === 'upload') {
             // 传文件并更新记录
-            this.update(file, {
-              data: { pass_through: res.pass_through },
-              finishBody: { pass_through: res.pass_through }
-            })
+            // this.update(file, {
+            //   data: { pass_through: res.pass_through },
+            //   finishBody: { pass_through: res.pass_through }
+            // })
+            file.data = {
+              ...file.data,
+              pass_through: res.pass_through
+            }
+            file.finishBody = {
+              pass_through: res.pass_through
+            }
           }
         } catch (e) {
+          if (e === 'abort') {
+            throw new Error('abort')
+          }
           throw new Error('check')
         }
       }

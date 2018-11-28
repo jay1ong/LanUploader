@@ -31,10 +31,10 @@ declare class _ extends Vue {
   add(files: Array<VUFile | File | object> | VUFile | File | object): object | Array<VUFile | object> | boolean
   addInputFile(el: HTMLInputElement): Array<VUFile>
   addDataTransfer(dataTransfer: DataTransfer): Promise<Array<VUFile>>
-  update(id: VUFile | object | string, data: object): object | boolean
-  remove(id: VUFile | object | string): object | boolean
+  update(id: VUFile | object | string, data: object, triggerEvt: Boolean): object | boolean
+  remove(id: VUFile | object | string, triggerEvt: Boolean): object | boolean
   replace(id1: VUFile | object | string, id2: VUFile | object | string): boolean
-  clear(): boolean
+  clear(triggerEvt: Boolean): boolean
 
   // Instance / Data
   readonly files: Array<VUFile>
