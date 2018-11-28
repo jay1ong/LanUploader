@@ -332,6 +332,10 @@ export default {
 
         // 事件
         this.emitInput()
+
+        this.needUploadFileIdSet = new Collections.HashSet()
+        this.uploadSuccessFileMap.clear()
+        this.uploadFailFileMap.clear()
         if (triggerEvt) {
           for (let i = 0; i < files.length; i++) {
             this.emitFile(undefined, files[i], EVENT_ENUM.REMOVE)
@@ -680,9 +684,9 @@ export default {
     // 更新
     update(id, data, triggerEvt = true) {
       // console.log('update', id, data)
-      console.log('更新进度条', this.progress)
+      // console.log('更新进度条', this.progress)
       this.refreshProgress()
-      console.log('ok: ', this.progress)
+      // console.log('ok: ', this.progress)
       let file = this.get(id)
       if (file) {
         let newFile = {
@@ -746,8 +750,8 @@ export default {
         }
       }
       const allNumber = this.needUploadFileIdSet.cardinality()
-      console.log('allNumber', allNumber)
-      console.log('allProgress', allProgress)
+      // console.log('allNumber', allNumber)
+      // console.log('allProgress', allProgress)
       this.progress = allNumber === 0 ? 0 : allProgress / allNumber
     },
 

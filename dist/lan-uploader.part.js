@@ -1,6 +1,6 @@
 /*!
  * Name: lan-uploader
- * Version: 2.8.38
+ * Version: 2.8.40
  * Author: northlan
  */
 (function (global, factory) {
@@ -4801,6 +4801,10 @@
 
           // 事件
           this.emitInput();
+
+          this.needUploadFileIdSet = new Collections.HashSet();
+          this.uploadSuccessFileMap.clear();
+          this.uploadFailFileMap.clear();
           if (triggerEvt) {
             for (var i = 0; i < files.length; i++) {
               this.emitFile(undefined, files[i], EVENT_ENUM.REMOVE);
@@ -5206,9 +5210,9 @@
         var triggerEvt = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : true;
 
         // console.log('update', id, data)
-        console.log('更新进度条', this.progress);
+        // console.log('更新进度条', this.progress)
         this.refreshProgress();
-        console.log('ok: ', this.progress);
+        // console.log('ok: ', this.progress)
         var file = this.get(id);
         if (file) {
           var newFile = _extends$1({}, file, data);
@@ -5270,8 +5274,8 @@
           }
         }
         var allNumber = this.needUploadFileIdSet.cardinality();
-        console.log('allNumber', allNumber);
-        console.log('allProgress', allProgress);
+        // console.log('allNumber', allNumber)
+        // console.log('allProgress', allProgress)
         this.progress = allNumber === 0 ? 0 : allProgress / allNumber;
       },
 
