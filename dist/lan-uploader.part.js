@@ -1,6 +1,6 @@
 /*!
  * Name: lan-uploader
- * Version: 2.8.40
+ * Version: 2.8.41
  * Author: northlan
  */
 (function (global, factory) {
@@ -4967,13 +4967,14 @@
 
                 case 24:
                   if (addFiles.length) {
-                    _context.next = 26;
+                    _context.next = 27;
                     break;
                   }
 
+                  _this.emitAllIn();
                   return _context.abrupt('return', false);
 
-                case 26:
+                case 27:
 
                   // 如果是 1 清空
                   if (_this.maximum === 1) {
@@ -5011,7 +5012,7 @@
                   // console.timeEnd('add')
                   return _context.abrupt('return', isArray ? addFiles : addFiles[0]);
 
-                case 34:
+                case 35:
                 case 'end':
                   return _context.stop();
               }

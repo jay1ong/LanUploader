@@ -336,6 +336,7 @@ export default {
         this.needUploadFileIdSet = new Collections.HashSet()
         this.uploadSuccessFileMap.clear()
         this.uploadFailFileMap.clear()
+        this.refreshProgress()
         if (triggerEvt) {
           for (let i = 0; i < files.length; i++) {
             this.emitFile(undefined, files[i], EVENT_ENUM.REMOVE)
@@ -465,6 +466,7 @@ export default {
       }
       // 没有文件
       if (!addFiles.length) {
+        this.emitAllIn()
         return false
       }
 
