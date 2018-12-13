@@ -1,6 +1,6 @@
 /*!
  * Name: lan-uploader
- * Version: 2.8.41
+ * Version: 2.8.42
  * Author: northlan
  */
 (function (global, factory) {
@@ -4805,6 +4805,7 @@
           this.needUploadFileIdSet = new Collections.HashSet();
           this.uploadSuccessFileMap.clear();
           this.uploadFailFileMap.clear();
+          this.refreshProgress();
           if (triggerEvt) {
             for (var i = 0; i < files.length; i++) {
               this.emitFile(undefined, files[i], EVENT_ENUM.REMOVE);
@@ -5247,7 +5248,7 @@
             if (newFile.success && !file.success && data.success) {
               this.emitFileSuccess(newFile);
             }
-            if (newFile.error && data.error) {
+            if (newFile.error || data.error) {
               this.emitFileError(newFile);
             }
             if (this.uploadSuccessFileMap.size() + this.uploadFailFileMap.size() === this.needUploadFileIdSet.cardinality()) {
@@ -5954,6 +5955,12 @@
               } else {
                 data.response = xhr.responseText;
               }
+              if (data.response.status) {
+                if (data.response.status == 'fail') {
+                  data.error = data.response.msg ? data.response.msg : 'error';
+                  delete data.progress;
+                }
+              }
             }
 
             // 更新
@@ -6297,7 +6304,7 @@
   /* style */
   var __vue_inject_styles__ = function __vue_inject_styles__(inject) {
     if (!inject) return;
-    inject("data-v-166477c7_0", { source: "\n.file-uploads{position:relative;text-align:center;display:none\n}", map: undefined, media: undefined });
+    inject("data-v-6711ad21_0", { source: "\n.file-uploads{position:relative;text-align:center;display:none\n}", map: undefined, media: undefined });
   };
   /* scoped */
   var __vue_scope_id__ = undefined;

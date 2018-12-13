@@ -725,7 +725,7 @@ export default {
           if (newFile.success && !file.success && data.success) {
             this.emitFileSuccess(newFile)
           }
-          if (newFile.error && data.error) {
+          if (newFile.error || data.error) {
             this.emitFileError(newFile)
           }
           if (this.uploadSuccessFileMap.size() + this.uploadFailFileMap.size() === this.needUploadFileIdSet.cardinality()) {
@@ -1301,6 +1301,12 @@ export default {
               data.response = JSON.parse(xhr.responseText)
             } else {
               data.response = xhr.responseText
+            }
+            if (data.response.status) {
+              if (data.response.status == 'fail') {
+                data.error = data.response.msg ? data.response.msg : 'error'
+                delete data.progress
+              }
             }
           }
 

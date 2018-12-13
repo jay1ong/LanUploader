@@ -1,6 +1,6 @@
 /*!
  * Name: lan-uploader
- * Version: 2.8.41
+ * Version: 2.8.42
  * Author: northlan
  */
 (function (global, factory) {
@@ -4805,6 +4805,7 @@
           this.needUploadFileIdSet = new Collections.HashSet();
           this.uploadSuccessFileMap.clear();
           this.uploadFailFileMap.clear();
+          this.refreshProgress();
           if (triggerEvt) {
             for (var i = 0; i < files.length; i++) {
               this.emitFile(undefined, files[i], EVENT_ENUM.REMOVE);
@@ -5247,7 +5248,7 @@
             if (newFile.success && !file.success && data.success) {
               this.emitFileSuccess(newFile);
             }
-            if (newFile.error && data.error) {
+            if (newFile.error || data.error) {
               this.emitFileError(newFile);
             }
             if (this.uploadSuccessFileMap.size() + this.uploadFailFileMap.size() === this.needUploadFileIdSet.cardinality()) {
@@ -5953,6 +5954,12 @@
                 data.response = JSON.parse(xhr.responseText);
               } else {
                 data.response = xhr.responseText;
+              }
+              if (data.response.status) {
+                if (data.response.status == 'fail') {
+                  data.error = data.response.msg ? data.response.msg : 'error';
+                  delete data.progress;
+                }
               }
             }
 
